@@ -73,6 +73,18 @@ The eight characters (`portraits/st*.gif`) are deliberately **late-90s / PS1-era
 
 Re-generating or restyling the cast is done through `say-notify-devserver.py` (the lookdev studio) plus the fal image/video endpoints; swapping `portraits/*.gif` is all the runtime needs.
 
+## Development
+
+The overlay binaries (`say-notify-overlay`, `say-notify-overlayd`) build on demand from their `.swift` sources — `say-notify.sh` rebuilds them when the binary is older than the source. **Caveat:** the hook can rebuild the binary but can't restart an *already-running* daemon, so after editing `say-notify-overlayd.swift` you must restart it yourself:
+
+```bash
+swiftc -O say-notify-overlayd.swift -o say-notify-overlayd
+launchctl kickstart -k "gui/$(id -u)/com.conner.say-notify-overlayd"   # if under a LaunchAgent
+# otherwise: pkill -f say-notify-overlayd   (relaunches on the next notification)
+```
+
+Copying the binary around can leave its mtime newer than the source, which suppresses the auto-rebuild — force a rebuild if a running card looks stale (e.g. wrong corner).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
