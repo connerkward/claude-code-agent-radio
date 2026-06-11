@@ -14,9 +14,9 @@
 #   generic verb; never a filename). NOTE: in bypass-permissions mode the permission
 #   notifications don't fire, so the idle bodies are what you actually hear.
 
-# Radio openers — vary the self-ID. {cs} = callsign.
-# Every opener self-identifies with the callsign (never just "Godfather, <cs>").
-openers=( "Godfather, this is {cs}." "{cs} to Godfather." "{cs} here." "This is {cs}." )
+# Radio openers — vary the self-ID. {cs} = callsign, {gf} = addressee (the user).
+# Every opener self-identifies with the callsign (never just "{gf}, <cs>").
+openers=( "{gf}, this is {cs}." "{cs} to {gf}." "{cs} here." "This is {cs}." )
 
 # Concise radio bodies, movie-inspired.
 warning_body=( "danger close, {detail}?" "weapons hot, {detail}?" "cleared hot to {detail}?" "go on {detail}?" "{detail}, danger close?" "{detail}, weapons free?" "clear to engage {detail}?" )
@@ -146,7 +146,12 @@ pick(){ k="$1"; shift; cnt=$#; f="${TMPDIR:-/tmp/}say-notify-last.$k"; last="$(c
     sel="$c"; [ "$cnt" -le 1 ] && break; [ "$c" != "$last" ] && break; i=$((i+1)); done
   printf '%s' "$sel" > "$f" 2>/dev/null; printf '%s' "$sel"; }
 
-opener="$(pick opener "${openers[@]}")"; opener="${opener//\{cs\}/$callsign}"
+# Addressee (the user, the {gf} placeholder): $SAY_ADDRESSEE > ~/.claude/say-addressee > "Godfather".
+gf="${SAY_ADDRESSEE:-}"
+[ -z "$gf" ] && [ -s "$HOME/.claude/say-addressee" ] && gf="$(cat "$HOME/.claude/say-addressee")"
+[ -z "$gf" ] && gf="Godfather"
+
+opener="$(pick opener "${openers[@]}")"; opener="${opener//\{cs\}/$callsign}"; opener="${opener//\{gf\}/$gf}"
 body="$(pick body "${bodies[@]}")"; body="${body//\{detail\}/$detail}"
 
 # Resolve our real directory, following symlinks (works when invoked directly OR

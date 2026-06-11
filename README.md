@@ -4,7 +4,11 @@ RTS-style "incoming transmission" notifications for [Claude Code](https://claude
 
 Think StarCraft unit callouts meets ATC radio discipline, for a desk full of parallel coding agents.
 
-![transmission card](portraits/st4-pilot.gif)
+![demo — transmissions stacking with spoken audio](docs/demo.gif)
+
+> ▶ **[Watch the demo with sound (docs/demo.mp4)](docs/demo.mp4)** — four windows calling in, each with its own callsign, portrait, and voice.
+
+![the cast — 8 callsigns, 8 retro voices](docs/cast.png)
 
 ## Why
 
@@ -46,15 +50,28 @@ If you run several Claude Code windows at once, you lose track of which one is b
 
 - It just works once the hook is registered — agents call out when they need you.
 - `say-callsign.sh "Strike Team"` — name the current window's callsign (keyed by `$CLAUDE_CODE_SESSION_ID`).
+- `say-addressee.sh "Boss"` — set how the radio **addresses you** (replaces the default "Godfather"). `say-addressee.sh --auto` pulls a name you're already known by (`git config user.name`, else `$USER`); `--reset` restores "Godfather". Per-call override: `SAY_ADDRESSEE="Overlord"`.
 - `python3 say-notify-devserver.py` — open the lookdev studio to tune the look/voices, then fire test transmissions.
 
 ### Env knobs
 
-`SAY_OVERLAY=0` (audio only) · `SAY_FORCE=1` (bypass focus suppression) · `SAY_MODE=quotes` (movie-quote flavor) · `SAY_RATE` · `SAY_VOICE` · `SAY_PORTRAIT` · `SN_TEAL`/`SN_AMBER`/`SN_W`/`SN_IMG`/`SN_CORNER`/`SN_LEVEL` (card look) · `SAY_BEEPGAP`/`SAY_MSGGAP` (audio timing) · `SAY_LOG=1` (debug log).
+`SAY_ADDRESSEE` (how it calls you) · `SAY_OVERLAY=0` (audio only) · `SAY_FORCE=1` (bypass focus suppression) · `SAY_MODE=quotes` (movie-quote flavor) · `SAY_RATE` · `SAY_VOICE` · `SAY_PORTRAIT` · `SN_TEAL`/`SN_AMBER`/`SN_W`/`SN_IMG`/`SN_CORNER`/`SN_LEVEL` (card look) · `SAY_BEEPGAP`/`SAY_MSGGAP` (audio timing) · `SAY_LOG=1` (debug log).
 
 ## How it works
 
 `say-notify.sh` reads the hook JSON on stdin, derives the callsign, picks a routed line, normalizes it for TTS, and (a) drops a card-request file for the daemon and (b) speaks — serialized so agents never talk over each other. `say-notify-overlayd` is one long-lived borderless non-activating window; each transmission is a faded-in subview, so no window is ever created/ordered per alert and your terminal focus is never disturbed.
+
+![three windows calling in at once](docs/screenshot-cards.png)
+
+## The cast — how the portraits were made
+
+The eight characters (`portraits/st*.gif`) are deliberately **late-90s / PS1-era pre-rendered** — plasticky skin, low-poly read, baked CRT grain — so they're legible as tiny corner chips and don't read as generic "AI art."
+
+- **Stills:** generated with **OpenAI `gpt-image-2`** (via [fal](https://fal.ai)), prompted for *90s pre-rendered CG / PS1 character-select portrait* with a transparent-background pass. `gpt-image-2` was chosen over FLUX specifically because FLUX kept producing modern photoreal skin no matter the prompt — it couldn't hit the retro-render look, where the OpenAI model could.
+- **Animation:** each still was driven to a short seamless loop with **Luma Ray 3.2** (image-to-video, `loop=true`) — chosen because it **preserves the source art style** instead of re-rendering it (idle breathing / subtle head motion, not a restyle).
+- **Voices:** each portrait is paired 1:1 with a matching macOS retro `say` voice (Grandpa, Ralph, Fred, Reed, Rocko, Shelley, Eddy, Flo) by timbre — see the cast image above.
+
+Re-generating or restyling the cast is done through `say-notify-devserver.py` (the lookdev studio) plus the fal image/video endpoints; swapping `portraits/*.gif` is all the runtime needs.
 
 ## License
 
