@@ -98,7 +98,11 @@ fi
 
 # --- callsign: agent override > Claude chat title > cmux title > project dir --
 # Reflects what the CONVERSATION is about, not just its folder. Priority:
-#   1. an explicit name the agent set with say-callsign.sh (keyed by session id)
+#   1. an explicit name the agent set with say-callsign.sh (keyed by session id) —
+#      UNLESS you've renamed the chat since: a later Claude `/rename` supersedes a
+#      stale override. say-callsign.sh records the chat title as it was at set-time
+#      (col 3); if the live title no longer matches that baseline, the rename wins.
+#      So the MOST RECENT naming action — say-callsign or /rename — governs.
 #   2. the Claude chat title — the `/rename` / auto "ai-title" in the transcript
 #      (this is the conversation's own name; the thing the user actually means)
 #   3. the cmux surface title (the tab's label) — fallback if no transcript
@@ -109,13 +113,27 @@ fi
 twoWords() { sed -E 's/[-_]+/ /g; s/[0-9]+/ /g' \
   | awk '{n=(NF<2?NF:2); for(i=1;i<=n;i++){w=$i; printf "%s%s%s",toupper(substr(w,1,1)),tolower(substr(w,2)),(i<n?" ":"")}}'; }
 reg="$HOME/.claude/say-callsigns.tsv"
-callsign="$(awk -F'\t' -v s="$sid" '$1==s{print $2; exit}' "$reg" 2>/dev/null)"   # 1
-# 2. Claude chat title (latest ai-title record). grep|tail keeps it fast on a
-#    multi-MB transcript instead of jq-parsing the whole file.
-if [ -z "$callsign" ] && [ -n "$tpath" ] && [ -f "$tpath" ]; then
+# Override row for this session: <sid> \t <name> \t <chat-title baseline @ set-time>.
+# (Legacy 2-column rows have no baseline → ov_base empty → never auto-superseded.)
+ov_name=""; ov_base=""
+IFS=$'\t' read -r _ ov_name ov_base \
+  < <(awk -F'\t' -v s="$sid" '$1==s{print; exit}' "$reg" 2>/dev/null) || true
+# Latest Claude chat title (ai-title). grep|tail keeps it fast on a multi-MB
+# transcript; needed both as path 2 and to detect a /rename since the override.
+# (ai-title records are re-emitted constantly but the VALUE only changes on a
+#  real retitle, so a value change is what signals "renamed since".)
+aititle=""
+if [ -n "$tpath" ] && [ -f "$tpath" ]; then
   aititle="$(grep '"type":"ai-title"' "$tpath" 2>/dev/null | tail -1 | jq -rc '.aiTitle // empty' 2>/dev/null)"
-  [ -n "$aititle" ] && callsign="$(printf '%s' "$aititle" | twoWords)"
 fi
+# Supersede: had an override, captured a baseline, and the title changed since →
+# the override is stale, ignore it so the new chat title (path 2) takes over.
+if [ -n "$ov_name" ] && [ -n "$ov_base" ] && [ -n "$aititle" ] && [ "$aititle" != "$ov_base" ]; then
+  ov_name=""
+fi
+callsign=""
+[ -n "$ov_name" ] && callsign="$ov_name"                                          # 1
+[ -z "$callsign" ] && [ -n "$aititle" ] && callsign="$(printf '%s' "$aititle" | twoWords)"   # 2
 [ -z "$callsign" ] && [ -n "$cmux_title" ] && callsign="$(printf '%s' "$cmux_title" | twoWords)"   # 3
 [ -z "$callsign" ] && callsign="$(basename "${cwd:-$PWD}" | twoWords)"            # 4
 [ -z "$callsign" ] && callsign="Unit"

@@ -49,7 +49,7 @@ If you run several Claude Code windows at once, you lose track of which one is b
 ## Usage
 
 - It just works once the hook is registered — agents call out when they need you.
-- `say-callsign.sh "Strike Team"` — name the current window's callsign (keyed by `$CLAUDE_CODE_SESSION_ID`).
+- `say-callsign.sh "Strike Team"` — name the current window's callsign (keyed by `$CLAUDE_CODE_SESSION_ID`). Renaming the chat in Claude afterwards (`/rename`) **supersedes** it — the most recent naming action wins: `say-callsign.sh` records the chat title at set-time and steps aside once you rename past it.
 - `say-addressee.sh "Boss"` — set how the radio **addresses you** (replaces the default "Godfather"). `say-addressee.sh --auto` pulls a name you're already known by (`git config user.name`, else `$USER`); `--reset` restores "Godfather". Per-call override: `SAY_ADDRESSEE="Overlord"`.
 - `python3 say-notify-devserver.py` — open the lookdev studio to tune the look/voices, then fire test transmissions.
 
