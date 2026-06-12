@@ -57,7 +57,10 @@ if [ -x "$CMUX_BIN" ]; then
     printf '%s' "$my_line" | grep -q '◀ active' && active_here=1
   fi
 fi
-front="$(lsappinfo info -only name "$(lsappinfo front 2>/dev/null)" 2>/dev/null | sed -E 's/.*"name"="?([^"]*)"?/\1/')"
+# frontmost-app name is only ever printed in the SAY_LOG diagnostics; skip the two
+# lsappinfo spawns on the hot path when logging is off (the default).
+front=""
+[ -n "${SAY_LOG:-}" ] && front="$(lsappinfo info -only name "$(lsappinfo front 2>/dev/null)" 2>/dev/null | sed -E 's/.*"name"="?([^"]*)"?/\1/')"
 : "${SAY_OVERLAY:=1}"; export SAY_OVERLAY      # portraits ON by default
 # (b) you're looking right at this window → don't alert.
 if [ "$active_here" = "1" ] && [ "${SAY_FORCE:-0}" != "1" ]; then
@@ -237,19 +240,14 @@ if [ -n "$SAY_PORTRAIT" ]; then
     [ -f "$cand" ] && { portrait="$cand"; break; }
   done
 fi
-# Voice matched 1:1 to each portrait's character, by timbre. en_US-qualified so the
-# Eloquence voices don't fall back to a non-English locale (bare "Eddy" = German Eddy).
-case "$(basename "$portrait")" in
-  *cargo-hauler*) voice="Rocko (English (US))" ;;    # gruff hauler
-  *engineer*)     voice="Shelley (English (US))" ;;  # woman
-  *mechanic*)     voice="Fred" ;;                     # deadpan low
-  *pilot*)        voice="Reed (English (US))" ;;      # smooth, cocky
-  *captain*)      voice="Grandpa (English (US))" ;;   # weary old man
-  *deckhand*)     voice="Eddy (English (US))" ;;      # younger
-  *android*)      voice="Ralph" ;;                    # deep, flat → robotic
-  *loader*)       voice="Flo (English (US))" ;;       # woman
-  *)              voice="Grandpa (English (US))" ;;
-esac
+# Voice matched 1:1 to each portrait's character (by timbre), via portraits/voices.tsv
+# (basename<TAB>voice) so swapping the cast brings its OWN voices — no code edit needed.
+# Voices are en_US-qualified so the Eloquence ones don't fall back to a non-English
+# locale (bare "Eddy" = German Eddy). Unmapped/overridden portrait → Grandpa default.
+voice=""
+vmap="$DIR/portraits/voices.tsv"
+[ -f "$vmap" ] && voice="$(awk -F'\t' -v b="$(basename "$portrait")" '$1==b{print $2; exit}' "$vmap")"
+[ -z "$voice" ] && voice="Grandpa (English (US))"
 [ -n "$SAY_VOICE" ] && voice="$SAY_VOICE"      # dev-UI / env override
 rate="${SAY_RATE:-240}"
 

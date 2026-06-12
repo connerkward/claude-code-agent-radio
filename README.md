@@ -69,9 +69,9 @@ The eight characters (`portraits/st*.gif`) are deliberately **late-90s / PS1-era
 
 - **Stills:** generated with **OpenAI `gpt-image-2`** (via [fal](https://fal.ai)), prompted for *90s pre-rendered CG / PS1 character-select portrait* with a transparent-background pass. `gpt-image-2` was chosen over FLUX specifically because FLUX kept producing modern photoreal skin no matter the prompt — it couldn't hit the retro-render look, where the OpenAI model could.
 - **Animation:** each still was driven to a short seamless loop with **Luma Ray 3.2** (image-to-video, `loop=true`) — chosen because it **preserves the source art style** instead of re-rendering it (idle breathing / subtle head motion, not a restyle).
-- **Voices:** each portrait is paired 1:1 with a matching macOS retro `say` voice (Grandpa, Ralph, Fred, Reed, Rocko, Shelley, Eddy, Flo) by timbre — see the cast image above.
+- **Voices:** each portrait is paired 1:1 with a matching macOS retro `say` voice (Grandpa, Ralph, Fred, Reed, Rocko, Shelley, Eddy, Flo) by timbre — see the cast image above. The pairing lives in `portraits/voices.tsv` (`basename<TAB>voice`); an unmapped portrait falls back to Grandpa.
 
-Re-generating or restyling the cast is done through `say-notify-devserver.py` (the lookdev studio) plus the fal image/video endpoints; swapping `portraits/*.gif` is all the runtime needs.
+Re-generating or restyling the cast is done through `say-notify-devserver.py` (the lookdev studio) plus the fal image/video endpoints. To swap in a new cast: drop the `portraits/*.gif` in and add their voice rows to `portraits/voices.tsv` — that's all the runtime needs.
 
 ## Development
 

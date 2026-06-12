@@ -1,5 +1,4 @@
-# compiled overlay binaries (built on demand by say-notify.sh)
-say-notify-overlay
+# compiled overlay binary (built on demand by say-notify.sh)
 say-notify-overlayd
 *.o
 __pycache__/
