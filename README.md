@@ -49,7 +49,7 @@ If you run several Claude Code windows at once, you lose track of which one is b
 ## Usage
 
 - It just works once the hook is registered — agents call out when they need you.
-- `say-callsign.sh "Strike Team"` — name the current window's callsign (keyed by `$CLAUDE_CODE_SESSION_ID`). Renaming the chat in Claude afterwards (`/rename`) **supersedes** it — the most recent naming action wins: `say-callsign.sh` records the chat title at set-time and steps aside once you rename past it.
+- `say-callsign.sh "Strike Team"` — name the current window's callsign (keyed by `$CLAUDE_CODE_SESSION_ID`). Renaming the chat in Claude afterwards (`/rename`) **supersedes** it — the most recent naming action wins: `say-callsign.sh` records the chat title at set-time and steps aside once you rename past it. `say-callsign.sh --reset` clears the override entirely (back to the chat title / project name).
 - `say-addressee.sh "Boss"` — set how the radio **addresses you** (replaces the default "Godfather"). `say-addressee.sh --auto` pulls a name you're already known by (`git config user.name`, else `$USER`); `--reset` restores "Godfather". Per-call override: `SAY_ADDRESSEE="Overlord"`.
 - `python3 say-notify-devserver.py` — open the lookdev studio to tune the look/voices, then fire test transmissions.
 
@@ -75,7 +75,7 @@ Re-generating or restyling the cast is done through `say-notify-devserver.py` (t
 
 ## Development
 
-The overlay binaries (`say-notify-overlay`, `say-notify-overlayd`) build on demand from their `.swift` sources — `say-notify.sh` rebuilds them when the binary is older than the source. **Caveat:** the hook can rebuild the binary but can't restart an *already-running* daemon, so after editing `say-notify-overlayd.swift` you must restart it yourself:
+The overlay binaries (`say-notify-overlay`, `say-notify-overlayd`) build on demand from their `.swift` sources — `say-notify.sh` rebuilds them when the binary is older than the source. After editing `say-notify-overlayd.swift`, the **next notification rebuilds the binary and restarts the running daemon for you** (it stops the old instance and, if a LaunchAgent supervises it, brings the new one up under launchd — converging to exactly one instance). The one-time focus blip from the relaunch only ever happens on your own dev edits, never on a normal alert. To restart by hand without waiting for a notification:
 
 ```bash
 swiftc -O say-notify-overlayd.swift -o say-notify-overlayd
@@ -83,7 +83,7 @@ launchctl kickstart -k "gui/$(id -u)/com.conner.say-notify-overlayd"   # if unde
 # otherwise: pkill -f say-notify-overlayd   (relaunches on the next notification)
 ```
 
-Copying the binary around can leave its mtime newer than the source, which suppresses the auto-rebuild — force a rebuild if a running card looks stale (e.g. wrong corner).
+Copying the binary around can leave its mtime newer than the source, which suppresses the auto-rebuild (and so the auto-restart) — force a rebuild if a running card looks stale (e.g. wrong corner).
 
 ## License
 

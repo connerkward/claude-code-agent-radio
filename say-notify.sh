@@ -237,10 +237,8 @@ if [ -n "$SAY_PORTRAIT" ]; then
     [ -f "$cand" ] && { portrait="$cand"; break; }
   done
 fi
-# Voice matched to each portrait's character. en_US-qualified so the Eloquence voices
-# don't fall back to a non-English locale (bare "Eddy" = German Eddy). Matched by timbre.
-# Only these 8 voices are valid (Eloquence ones en_US-qualified so they don't fall back
-# to German). 1:1 with the cast, matched by timbre.
+# Voice matched 1:1 to each portrait's character, by timbre. en_US-qualified so the
+# Eloquence voices don't fall back to a non-English locale (bare "Eddy" = German Eddy).
 case "$(basename "$portrait")" in
   *cargo-hauler*) voice="Rocko (English (US))" ;;    # gruff hauler
   *engineer*)     voice="Shelley (English (US))" ;;  # woman
@@ -300,13 +298,28 @@ if [ "${SAY_OVERLAY:-1}" != "0" ]; then    # overlay ON by default; SAY_OVERLAY=
   # just drop request files in a watched dir: "<id>.card" to show, "<id>.dismiss"
   # to remove (when this card's audio ends).
   ovdsrc="$DIR/say-notify-overlayd.swift"; ovdbin="$DIR/say-notify-overlayd"
+  rebuilt=0
   if ! { [ -x "$ovdbin" ] && [ "$ovdbin" -nt "$ovdsrc" ]; }; then
     tmpbin="$(mktemp -t snovd)"
-    if swiftc -O "$ovdsrc" -o "$tmpbin" 2>/dev/null; then mv -f "$tmpbin" "$ovdbin"; else rm -f "$tmpbin"; fi
+    if swiftc -O "$ovdsrc" -o "$tmpbin" 2>/dev/null; then mv -f "$tmpbin" "$ovdbin"; rebuilt=1; else rm -f "$tmpbin"; fi
   fi
-  # Ensure the daemon runs. Its window orderFronts exactly ONCE (here, at launch);
-  # that single moment is the only time focus could blip — never again per alert.
-  if [ -x "$ovdbin" ] && ! pgrep -f "say-notify-overlayd" >/dev/null 2>&1; then
+  # A running daemon can't hot-swap its own code, so a fresh rebuild won't take
+  # effect until the old instance is replaced. If we just rebuilt AND one is
+  # running, restart it (fixes the "edit the .swift, but the card stays stale"
+  # caveat — no manual launchctl/pkill needed). This is the only place a restart
+  # ever happens, so the one-time focus blip is confined to your own dev edits.
+  started=0
+  if [ "$rebuilt" = "1" ] && pgrep -f "say-notify-overlayd" >/dev/null 2>&1; then
+    # Kill whatever's running (launchd's child OR a bare nohup instance)…
+    pkill -f "say-notify-overlayd" 2>/dev/null
+    # …then, if a LaunchAgent supervises it, bring the new binary up under launchd
+    # (kickstart -k converges to exactly one supervised instance, KeepAlive and all).
+    label="$(launchctl list 2>/dev/null | awk '/say-notify-overlayd/{print $3; exit}')"
+    if [ -n "$label" ]; then launchctl kickstart -k "gui/$(id -u)/$label" 2>/dev/null; started=1; fi
+  fi
+  # Ensure the daemon runs. Its window orderFronts exactly ONCE (at launch); that
+  # single moment is the only time focus could blip — never again per alert.
+  if [ "$started" = "0" ] && [ -x "$ovdbin" ] && ! pgrep -f "say-notify-overlayd" >/dev/null 2>&1; then
     nohup "$ovdbin" >/dev/null 2>&1 &
   fi
   carddir="${TMPDIR:-/tmp/}say-notify-cards"; mkdir -p "$carddir"
